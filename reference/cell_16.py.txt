@@ -1,0 +1,49 @@
+if 'model' in globals():
+    del model
+gc.collect()
+torch.cuda.empty_cache()
+from sentence_transformers import SentenceTransformer
+
+embed_model = SentenceTransformer(EMBED_MODEL_NAME, device='cuda')
+print('임베딩 입력 최대 토큰:', embed_model.max_seq_length)
+
+def cause_text(row):
+    if clean_text(row.get('분석상태')) != '분석완료':
+        return ''
+    names = [('인적요인', '인적'), ('물적요인', '물적'), ('기타', '기타')]
+    active = [label for column, label in names if row.get(column) == 1]
+    return ', '.join(active) if active else '해당 원인 없음'
+
+def embedding_text(row):
+    # 짧은 필드를 앞에 두어 긴 본문에서 잘릴 가능성을 줄임
+    parts = [
+        f'주 요지: {clean_text(row.get("주요지"))}',
+        f'부 요지: {clean_text(row.get("부요지"))}',
+        f'키워드: {clean_text(row.get("핵심키워드"))}',
+        f'발생 원인: {cause_text(row)}',
+        f'민원 내용: {clean_text(row.get("민원내용"))}',
+    ]
+    return '\n'.join(parts)
+
+history_df = df.loc[df['분석상태'].eq('분석완료') & df['handling_team'].ne('') & df['데이터역할'].eq('검색이력')].copy()
+if history_df.empty:
+    raise ValueError('검색 가능한 완료 이력이 없습니다. 분석 상태와 처리부서 연결을 확인하세요.')
+history_df = attach_department_attributes(history_df)
+excluded_departments = history_df.loc[~history_df['dept_routing_enabled'].eq(True), 'handling_team'].unique()
+print('기준표 미등록/제외 부서:', list(excluded_departments))
+history_df = history_df.loc[history_df['dept_routing_enabled'].eq(True)].copy()
+if history_df.empty:
+    raise ValueError('department_master에 등록된 검색 이력이 없습니다.')
+history_df = history_df.reset_index(drop=True)
+history_df['embedding_text'] = history_df.apply(embedding_text, axis=1)
+
+token_lengths = [len(embed_model.tokenizer.encode(text, add_special_tokens=True))
+                 for text in history_df['embedding_text']]
+print('검색 이력:', len(history_df), '최대 토큰:', max(token_lengths),
+      '잘릴 수 있는 행:', sum(x > embed_model.max_seq_length for x in token_lengths))
+
+history_embeddings = embed_model.encode(
+    history_df['embedding_text'].tolist(), batch_size=32, normalize_embeddings=True,
+    convert_to_numpy=True, show_progress_bar=True
+)
+assert len(history_df) == len(history_embeddings)

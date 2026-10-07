@@ -1,0 +1,150 @@
+import ipywidgets as widgets
+
+APPROVAL_COLUMNS = ['번호', 'AI_추천부서', '최종선택부서', '처리상태', '승인시각UTC', '승인메모']
+
+def load_approvals():
+    if not APPROVAL_PATH.exists():
+        return pd.DataFrame(columns=APPROVAL_COLUMNS)
+    frame = pd.read_csv(APPROVAL_PATH, dtype={'번호': str}, encoding='utf-8-sig').fillna('')
+    assert_columns(frame, APPROVAL_COLUMNS, '승인 저장 파일')
+    if frame['번호'].duplicated().any():
+        raise ValueError('승인 저장 파일에 중복 번호가 있습니다.')
+    return frame[APPROVAL_COLUMNS].copy()
+
+def export_results():
+    approvals = load_approvals()
+    export = df.drop(columns=APPROVAL_COLUMNS[1:], errors='ignore').merge(
+        approvals, on='번호', how='left', validate='one_to_one'
+    )
+    export['처리상태'] = export['처리상태'].fillna('확인대기')
+    temp = FINAL_PATH.with_name(FINAL_PATH.stem + '.tmp.xlsx')
+    export.to_excel(temp, index=False)
+    os.replace(temp, FINAL_PATH)
+    return FINAL_PATH
+
+def save_decision(complaint_id, ai_department, selected_department, state, memo=''):
+    complaint_id = clean_id(complaint_id)
+    if complaint_id not in set(df['번호']):
+        raise ValueError('알 수 없는 민원 번호')
+    active_teams = set(department_master.loc[department_master['routing_enabled'], 'department']) - {''}
+    if state == '승인완료' and selected_department not in active_teams:
+        raise ValueError('기준표에서 활성화된 처리부서 중 하나를 선택하세요.')
+    if state not in {'승인완료', '보류'}:
+        raise ValueError('허용되지 않는 승인 상태')
+    approvals = load_approvals()
+    approvals = approvals.loc[approvals['번호'].ne(complaint_id)].copy()
+    entry = {
+        '번호': complaint_id, 'AI_추천부서': clean_text(ai_department),
+        '최종선택부서': selected_department if state == '승인완료' else '',
+        '처리상태': state, '승인시각UTC': datetime.now(timezone.utc).isoformat(),
+        '승인메모': clean_text(memo)[:500],
+    }
+    approvals = pd.concat([approvals, pd.DataFrame([entry])], ignore_index=True)
+    temp = APPROVAL_PATH.with_suffix('.tmp.csv')
+    approvals.to_csv(temp, index=False, encoding='utf-8-sig')
+    os.replace(temp, APPROVAL_PATH)
+    export_results()
+    return entry
+
+def show_confirmation(row, recommendation):
+    complaint_id = clean_id(row['번호'])
+    current = row.copy()
+    ai_department = recommendation['recommended_department']
+    all_teams = sorted(set(department_master.loc[department_master['routing_enabled'], 'department']) - {''})
+    options = [('-- 부서 선택 --', '')] + [(name, name) for name in all_teams]
+    previous = load_approvals()
+    previous = previous.loc[previous['번호'].eq(complaint_id)]
+    saved_department = clean_text(previous.iloc[0]['최종선택부서']) if not previous.empty else ''
+    initial_department = saved_department if saved_department in all_teams else (ai_department or '')
+    dropdown = widgets.Dropdown(options=options, value=initial_department, description='최종 부서')
+    memo = widgets.Textarea(description='메모', placeholder='선택 변경 또는 보류 사유', layout={'width':'80%'})
+    approve_button = widgets.Button(description='선택 부서 승인', button_style='success')
+    defer_button = widgets.Button(description='보류', button_style='warning')
+    output = widgets.Output()
+    if not previous.empty:
+        memo.value = clean_text(previous.iloc[0]['승인메모'])
+        print('저장된 상태:', previous.iloc[0]['처리상태'])
+
+    print('민원 번호:', complaint_id)
+    print('민원내용:', clean_text(current['민원내용']))
+    print('요지:', clean_text(current.get('주요지')),
+          '| 키워드:', clean_text(current.get('핵심키워드')))
+    print('추출 위치:', clean_text(current.get('location_candidate')) or '없음',
+          '| 표준위치:', clean_text(current.get('표준위치')) or '미매핑')
+    print('관할본부:', clean_text(current.get('관할본부')) or '확인 필요',
+          '| 업무기능:', clean_text(current.get('업무기능')) or '확인 필요',
+          '| routing_scope:', clean_text(current.get('routing_scope')))
+    print('위치 매핑/검증:', clean_text(current.get('위치매핑상태')),
+          '/', clean_text(current.get('위치검증상태')))
+    print('후보 제한:', recommendation.get('routing_filter_info', ''))
+    print('추천 상태:', recommendation['status'], '| 추천:', ai_department or '없음')
+    print('추천 후보 1순위:', recommendation['first_priority_department'] or '없음')
+    print('추천 후보 2순위:', recommendation['second_priority_department'] or '없음')
+    if recommendation['status'] == '추천보류':
+        print('위 순위는 검토용 후보이며 자동 추천은 보류되었습니다.')
+    print('추천 근거:', recommendation['reason'])
+    display(recommendation['top_departments'])
+    evidence = recommendation['similar_vocs'][['번호', 'handling_team', 'similarity', '민원내용']].copy()
+    display(evidence.head(5))
+
+    def commit(state):
+        with output:
+            clear_output()
+            try:
+                saved = save_decision(complaint_id, ai_department, dropdown.value, state, memo.value)
+                print('저장 완료:', saved['처리상태'], saved['최종선택부서'])
+                print('결과 파일:', FINAL_PATH)
+                approve_button.disabled = True
+                defer_button.disabled = True
+            except Exception as exc:
+                print('저장 실패:', type(exc).__name__, str(exc))
+
+    approve_button.on_click(lambda _: commit('승인완료'))
+    defer_button.on_click(lambda _: commit('보류'))
+    display(dropdown, memo, widgets.HBox([approve_button, defer_button]), output)
+    return dropdown, approve_button, defer_button
+
+export_results()  # 승인 버튼을 누르기 전에는 확인대기로 저장
+print('결과 파일:', FINAL_PATH)
+
+def show_review_browser():
+    candidates = query_candidates.reset_index(drop=True)
+    options = [(f"{row['번호']} | {clean_text(row['subject'])[:35]}", row['번호'])
+               for _, row in candidates.iterrows()]
+    selector = widgets.Dropdown(options=options, value=current_row['번호'],
+                                description='민원 선택', layout={'width': '90%'})
+    previous_button = widgets.Button(description='이전')
+    next_button = widgets.Button(description='다음')
+    view = widgets.Output()
+    recommendation_cache = {}
+
+    def render(*_):
+        with view:
+            clear_output(wait=True)
+            row = candidates.loc[candidates['번호'].eq(selector.value)].iloc[0].copy()
+            if selector.value not in recommendation_cache:
+                recommendation_cache[selector.value] = recommend_department(row)
+                record_recommendation(selector.value, recommendation_cache[selector.value])
+                export_results()
+            decisions = load_approvals()
+            reviewed = decisions['번호'].isin(candidates['번호']).sum()
+            print(f'검토 기록: {reviewed}/{len(candidates)}건')
+            show_confirmation(row, recommendation_cache[selector.value])
+        position = candidates.index[candidates['번호'].eq(selector.value)][0]
+        previous_button.disabled = bool(position == 0)
+        next_button.disabled = bool(position == len(candidates) - 1)
+
+    def move(step):
+        position = candidates.index[candidates['번호'].eq(selector.value)][0]
+        target = position + step
+        if 0 <= target < len(candidates):
+            selector.value = candidates.iloc[target]['번호']
+
+    selector.observe(render, names='value')
+    previous_button.on_click(lambda _: move(-1))
+    next_button.on_click(lambda _: move(1))
+    display(selector, widgets.HBox([previous_button, next_button]), view)
+    render()
+    return selector
+
+review_selector = show_review_browser()

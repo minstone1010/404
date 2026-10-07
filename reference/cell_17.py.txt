@@ -1,0 +1,145 @@
+RANK_COLUMNS = ['department', 'count', 'frequency', 'mean_similarity',
+                'max_similarity', 'score']
+
+def empty_ranking():
+    return pd.DataFrame(columns=RANK_COLUMNS)
+
+def restrict_routing_candidates(current_row):
+    pool = history_df.copy()
+    scope = clean_text(current_row.get('routing_scope'))
+    note = ''
+    if current_row.get('라우팅분석상태') != '완료':
+        return pool.iloc[0:0], '위치·범위 분석이 완료되지 않아 추천을 보류합니다.'
+    if scope == '지역형':
+        region = clean_text(current_row.get('관할지역코드'))
+        if current_row.get('위치매핑상태') != '매핑완료' or not region:
+            return pool.iloc[0:0], '지역형 민원의 위치 관할이 미매핑/모호하여 추천을 보류합니다.'
+        pool = pool.loc[pool['dept_scope'].eq('지역') & pool['dept_region_code'].eq(region)]
+        note = f"지역 제한: {clean_text(current_row.get('관할본부'))}"
+    elif scope == '전국형':
+        pool = pool.loc[pool['dept_scope'].isin(['전국', '광역/전국', '본사'])]
+        note = '범위 제한: 본사/전국 조직'
+    else:
+        return pool.iloc[0:0], '지역형/전국형 범위가 불명확하여 추천을 보류합니다.'
+    choices = current_row.get('업무기능후보', [])
+    if not isinstance(choices, list):
+        choices = []
+    if choices:
+        preferred = pool.loc[pool['dept_business_function'].isin(choices)]
+        if not preferred.empty:
+            pool = preferred
+            note += ' | 업무기능 우선: ' + ', '.join(choices)
+        else:
+            note += ' | 해당 업무기능 이력 없음: 동일 scope/지역 후보만 유지'
+    else:
+        note += ' | 업무기능 불명확: 동일 scope/지역 후보 유지'
+    return pool, note
+
+def retrieve_similar_vocs(current_row, top_k=TOP_K):
+    if not isinstance(top_k, int) or top_k < 1:
+        raise ValueError('top_k는 양의 정수')
+    if current_row.get('분석상태') != '분석완료':
+        raise ValueError('분석이 완료되지 않은 민원은 검색할 수 없음')
+    # 지역/scope/업무기능 제한을 임베딩 유사도 계산보다 먼저 적용.
+    pool, note = restrict_routing_candidates(current_row)
+    current_id = clean_id(current_row['번호'])
+    pool = pool.loc[pool['번호'].ne(current_id)
+                    & pool['중복그룹'].ne(current_row['중복그룹'])
+                    & pool['민원내용'].map(clean_text).ne(clean_text(current_row['민원내용']))].copy()
+    if not pool.empty:
+        query = embed_model.encode([embedding_text(current_row)],
+                                   normalize_embeddings=True, convert_to_numpy=True)[0]
+        # history_df reset_index와 history_embeddings의 대응 순서를 보존.
+        pool['similarity'] = history_embeddings[pool.index.to_numpy()] @ query
+        pool = pool.sort_values('similarity', ascending=False).head(top_k).copy()
+    else:
+        pool['similarity'] = pd.Series(dtype=float)
+    pool.attrs['routing_filter_info'] = note
+    return pool
+
+def rank_departments(similar_vocs):
+    if similar_vocs.empty:
+        return empty_ranking()
+    total = len(similar_vocs)
+    rows = []
+    for department, group in similar_vocs.groupby('handling_team'):
+        count = len(group)
+        mean = float(group['similarity'].mean())
+        frequency = count / total
+        rows.append({
+            'department': department, 'count': count, 'frequency': frequency,
+            'mean_similarity': mean, 'max_similarity': float(group['similarity'].max()),
+            'score': 0.7 * mean + 0.3 * frequency,
+        })
+    return pd.DataFrame(rows, columns=RANK_COLUMNS).sort_values(
+        ['score', 'count', 'department'], ascending=[False, False, True]
+    ).reset_index(drop=True)
+
+def recommend_department(current_row, top_k=TOP_K, top_n=TOP_N):
+    if not isinstance(top_n, int) or top_n < 1:
+        raise ValueError('top_n은 양의 정수')
+    similar = retrieve_similar_vocs(current_row, top_k)
+    filter_info = similar.attrs.get('routing_filter_info', '')
+    similar = similar.loc[similar['similarity'] >= MIN_SIMILARITY].copy()
+    ranking = rank_departments(similar)
+    result = {'recommended_department': None, 'top_departments': ranking.head(max(2, top_n)).copy(),
+              'similar_vocs': similar, 'status': '추천보류', 'reason': ''}
+    if ranking.empty:
+        result['reason'] = '유사도 기준을 충족하는 완료 이력이 없습니다.'
+    elif int(ranking.iloc[0]['count']) < MIN_SUPPORT:
+        result['reason'] = f'1위 부서의 근거가 {int(ranking.iloc[0]["count"])}건으로 부족합니다.'
+    elif len(ranking) > 1 and ranking.iloc[0]['score'] - ranking.iloc[1]['score'] < MIN_SCORE_MARGIN:
+        result['reason'] = '1위와 2위 점수 차이가 작아 담당자 검토가 필요합니다.'
+    else:
+        first = ranking.iloc[0]
+        result['recommended_department'] = first['department']
+        result['status'] = '추천가능'
+        result['reason'] = (f'유사 민원 {len(similar)}건 중 {int(first["count"])}건을 처리했습니다. '
+                            f'평균 의미 유사도 {first["mean_similarity"]:.3f}.')
+    result['routing_filter_info'] = filter_info
+    result['reason'] = filter_info + ' | ' + result['reason']
+    result['first_priority_department'] = ranking.iloc[0]['department'] if len(ranking) >= 1 else None
+    result['second_priority_department'] = ranking.iloc[1]['department'] if len(ranking) >= 2 else None
+    result['first_priority_score'] = float(ranking.iloc[0]['score']) if len(ranking) >= 1 else None
+    result['second_priority_score'] = float(ranking.iloc[1]['score']) if len(ranking) >= 2 else None
+    return result
+
+def record_recommendation(complaint_id, recommendation):
+    selected = df['번호'].eq(clean_id(complaint_id))
+    if selected.sum() != 1:
+        raise ValueError('추천 결과를 저장할 민원이 정확히 1건이어야 합니다.')
+    fields = {
+        '추천부서_1순위': recommendation['first_priority_department'],
+        '추천부서_2순위': recommendation['second_priority_department'],
+        '추천점수_1순위': recommendation['first_priority_score'],
+        '추천점수_2순위': recommendation['second_priority_score'],
+        '추천상태': recommendation['status'],
+        '추천근거': recommendation['reason'],
+    }
+    for column, value in fields.items():
+        if column not in df:
+            df[column] = pd.Series(None, index=df.index, dtype='object')
+        df.loc[selected, column] = value
+
+query_candidates = df.loc[df['분석상태'].eq('분석완료')].copy()
+if SPLIT_MODE == 'holdout':
+    query_candidates = query_candidates.loc[query_candidates['데이터역할'].eq('검토대상')]
+# 조회 대상에 정답 처리부서를 전달하지 않습니다.
+query_candidates = query_candidates.drop(columns=['handling_team'], errors='ignore')
+if query_candidates.empty:
+    raise ValueError('분석 완료된 조회 대상이 없습니다.')
+if QUERY_ID is None:
+    current_row = query_candidates.iloc[0].copy()
+else:
+    matches = query_candidates.loc[query_candidates['번호'].eq(clean_id(QUERY_ID))]
+    if len(matches) != 1:
+        raise ValueError('QUERY_ID에 해당하는 분석 완료 민원이 정확히 1건이어야 합니다.')
+    current_row = matches.iloc[0].copy()
+recommendation_result = recommend_department(current_row)
+record_recommendation(current_row['번호'], recommendation_result)
+print('민원 번호:', current_row['번호'])
+print('추천 상태:', recommendation_result['status'])
+print('추천 후보 1순위:', recommendation_result['first_priority_department'] or '없음')
+print('추천 후보 2순위:', recommendation_result['second_priority_department'] or '없음')
+print('근거:', recommendation_result['reason'])
+display(recommendation_result['top_departments'])

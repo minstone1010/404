@@ -1,0 +1,76 @@
+def fingerprint(row):
+    payload = '|'.join([clean_id(row['번호']), clean_text(row['민원내용']),
+                        MODEL_NAME, PROMPT_VERSION, CODEBOOK_HASH])
+    return hashlib.sha256(payload.encode('utf-8')).hexdigest()
+
+def atomic_json_write(path, value):
+    temp = path.with_suffix(path.suffix + '.tmp')
+    temp.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
+    os.replace(temp, path)
+
+cache = json.loads(CACHE_PATH.read_text(encoding='utf-8')) if CACHE_PATH.exists() else {}
+eligible_df = df.loc[df['입력검증상태'].eq('분석가능')].copy()
+if ANALYSIS_LIMIT is not None:
+    if not isinstance(ANALYSIS_LIMIT, int) or ANALYSIS_LIMIT < 1:
+        raise ValueError('ANALYSIS_LIMIT는 양의 정수 또는 None')
+    eligible_df = eligible_df.head(ANALYSIS_LIMIT)
+
+try:
+    for n, (_, row) in enumerate(eligible_df.iterrows(), start=1):
+        key = clean_id(row['번호'])
+        signature = fingerprint(row)
+        record = cache.get(key, {})
+        if record.get('fingerprint') != signature:
+            record = {'fingerprint': signature}
+        if 'topic' not in record:
+            try:
+                raw_topic = analyze_topic(clean_text(row['민원내용']))
+                record['raw_topic_response'] = raw_topic
+                record['topic'] = parse_topic(raw_topic)
+                record.pop('topic_error', None)
+            except Exception as exc:
+                record['topic_error'] = f'{type(exc).__name__}: {exc}'[:300]
+        if 'topic' in record and 'cause' not in record:
+            try:
+                raw_cause = analyze_cause(clean_text(row['민원내용']), record['topic'])
+                record['raw_cause_response'] = raw_cause
+                record['cause'] = parse_cause(raw_cause)
+                record.pop('cause_error', None)
+            except Exception as exc:
+                record['cause_error'] = f'{type(exc).__name__}: {exc}'[:300]
+        cache[key] = record
+        if n % CHECKPOINT_EVERY == 0 or n == len(eligible_df):
+            atomic_json_write(CACHE_PATH, cache)
+            print(f'분석 진행: {n}/{len(eligible_df)}')
+finally:
+    atomic_json_write(CACHE_PATH, cache)
+
+analysis_rows = []
+for _, row in df.iterrows():
+    key = clean_id(row['번호'])
+    record = cache.get(key, {})
+    if record.get('fingerprint') != fingerprint(row):
+        record = {}
+    if row['입력검증상태'] != '분석가능':
+        record = {}
+    state = row['입력검증상태']
+    if state == '분석가능':
+        if 'topic' in record and 'cause' in record:
+            state = '분석완료'
+        elif 'topic_error' in record or 'cause_error' in record:
+            state = '분석오류'
+        else:
+            state = '미분석'
+    analysis_rows.append({
+        '번호': key, '분석상태': state,
+        '분석오류': record.get('topic_error') or record.get('cause_error'),
+        **record.get('topic', {}), **record.get('cause', {}),
+    })
+analysis_columns = ['번호', '분석상태', '분석오류', '주요지코드', '주요지', '주요지_대분류',
+                    '부요지코드', '부요지', '부요지_대분류', '핵심키워드',
+                    '인적요인', '물적요인', '기타', '발생원인_판단이유']
+analysis_df = pd.DataFrame(analysis_rows).reindex(columns=analysis_columns)
+df = df.drop(columns=analysis_columns[1:], errors='ignore')
+df = df.merge(analysis_df, on='번호', how='left', validate='one_to_one')
+print('분석 상태:')
+display(df['분석상태'].value_counts(dropna=False).rename_axis('상태').reset_index(name='건수'))

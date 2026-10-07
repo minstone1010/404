@@ -1,0 +1,28 @@
+# 접수경로: DB 코드와 사람이 읽는 상세명·상위 범주를 분리합니다.
+CHANNELS = {
+    # 제공된 '데이터' 시트의 접수경로·경로구분 명칭과 일치
+    'EPL': ('국민신문고', '외부연계'),
+    'SAF': ('안전신문고', '외부연계'),
+    'STN': ('역 접점(서면)', '자체'),
+    'WEB': ('홈페이지', '자체'),
+    'APP': ('코레일톡 앱', '자체'),
+    'DOC': ('문서·우편·FAX', '자체'),
+    'CEO': ('CEO대화방', '특수'),
+}
+
+def parse_channel(value):
+    raw = clean_text(value)
+    if not raw:
+        return pd.Series({'접수경로_코드': None, '접수경로_상세': None,
+                          '접수경로_대분류': None, '접수경로_상태': '미입력'})
+    code = raw.split()[0].upper()
+    if code not in CHANNELS:
+        return pd.Series({'접수경로_코드': code, '접수경로_상세': raw,
+                          '접수경로_대분류': None, '접수경로_상태': '미매핑'})
+    detail, group = CHANNELS[code]
+    return pd.Series({'접수경로_코드': code, '접수경로_상세': detail,
+                      '접수경로_대분류': group, '접수경로_상태': 'DB확인'})
+
+df = pd.concat([df, df['intake_channel'].apply(parse_channel)], axis=1)
+display(df['접수경로_상태'].value_counts(dropna=False).rename_axis('상태').reset_index(name='건수'))
+display(df[['번호', 'intake_channel', '접수경로_코드', '접수경로_상세', '접수경로_상태']].head())

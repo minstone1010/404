@@ -1,0 +1,48 @@
+from pathlib import Path
+import json, hashlib, os, re, gc, unicodedata
+from datetime import datetime, timezone
+import numpy as np
+import pandas as pd
+import torch
+from IPython.display import display, clear_output
+
+try:
+    from google.colab import drive
+    drive.mount('/content/drive')
+    INPUT_DIR = Path('/content/drive/MyDrive')
+    OUTPUT_DIR = INPUT_DIR / 'voc_original_output'
+except ImportError:
+    INPUT_DIR = Path.home() / 'Downloads'
+    OUTPUT_DIR = Path.cwd() / 'voc_original_output'
+
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+MODEL_NAME = 'Qwen/Qwen3-4B'
+EMBED_MODEL_NAME = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
+PROMPT_VERSION = 'voc-original-v3-2026-10-04'
+ANALYSIS_LIMIT = None      # None: 원본 전체; 처음 시험할 때는 20 등으로 변경
+QUERY_ID = None            # None: 분석이 완료된 첫 행 사용; 특정 번호 문자열도 가능
+TOP_K = 10
+TOP_N = 3
+MIN_SIMILARITY = 0.55     # 임시 기준: 검증 데이터로 조정
+MIN_SUPPORT = 2           # 임시 기준: 검증 데이터로 조정
+MIN_SCORE_MARGIN = 0.03   # 임시 기준: 1·2위 점수 차이
+CHECKPOINT_EVERY = 5
+SPLIT_MODE = 'holdout'    # holdout: 그룹 단위 80/20 분리; demo: 전체 이력에서 본인/중복만 제외
+HISTORY_FRACTION = 0.8
+SPLIT_SEED = 'voc-split-v1'
+
+CACHE_PATH = OUTPUT_DIR / 'analysis_checkpoint.json'
+APPROVAL_PATH = OUTPUT_DIR / 'approvals.csv'
+FINAL_PATH = OUTPUT_DIR / 'voc_analysis_results.xlsx'
+
+def find_input(pattern):
+    # 한글 파일명의 NFC/NFD 차이와 Colab Drive 경로 차이를 고려
+    files = [p for p in INPUT_DIR.glob('*.xlsx')
+             if unicodedata.normalize('NFC', p.name).startswith(pattern)]
+    if len(files) != 1:
+        raise FileNotFoundError(f'{pattern}: 입력 파일 {len(files)}개 발견. INPUT_DIR={INPUT_DIR}; 파일명을 확인하세요.')
+    return files[0]
+
+SOURCE_PATH = find_input('voc_dummy_2500_v3')
+print('원본:', SOURCE_PATH.name)
+print('결과 폴더:', OUTPUT_DIR)

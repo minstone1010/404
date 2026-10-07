@@ -1,0 +1,92 @@
+# 기준표 위치: Colab에서는 MyDrive 또는 /content에 업로드하세요.
+# 다른 위치를 쓰면 ROUTING_MASTER_PATH에 파일 전체 경로를 지정하세요.
+ROUTING_MASTER_PATH = None
+if ROUTING_MASTER_PATH is None:
+    search_dirs = [INPUT_DIR, Path('/content'), Path.home() / 'OneDrive' / '바탕 화면']
+    matches = {p.resolve() for directory in search_dirs if directory.exists()
+               for p in directory.glob('korail_voc_routing_master*.xlsx')}
+    if len(matches) != 1:
+        raise FileNotFoundError('라우팅 기준표 파일을 한 개만 업로드하거나 ROUTING_MASTER_PATH를 지정하세요.')
+    ROUTING_MASTER_PATH = next(iter(matches))
+else:
+    ROUTING_MASTER_PATH = Path(ROUTING_MASTER_PATH)
+
+location_master = pd.read_excel(ROUTING_MASTER_PATH, sheet_name='location_master')
+department_master = pd.read_excel(ROUTING_MASTER_PATH, sheet_name='department_master')
+topic_function_map = pd.read_excel(ROUTING_MASTER_PATH, sheet_name='topic_function_map')
+assert_columns(location_master, ['location_keyword', 'canonical_location', 'region_headquarters',
+                                'region_code', 'match_priority', 'verification_status'], 'location_master')
+assert_columns(department_master, ['department', 'parent_org', 'region_code', 'business_function',
+                                  'scope', 'routing_enabled'], 'department_master')
+assert_columns(topic_function_map, ['topic_code', 'suggested_business_function', 'scope_hint'], 'topic_function_map')
+for column in ['location_keyword', 'canonical_location', 'region_headquarters', 'region_code', 'verification_status']:
+    location_master[column] = location_master[column].map(clean_text)
+for column in ['department', 'parent_org', 'region_code', 'business_function', 'scope']:
+    department_master[column] = department_master[column].map(clean_text)
+topic_function_map['topic_code'] = topic_function_map['topic_code'].map(clean_text)
+if department_master['department'].eq('').any() or department_master['department'].duplicated().any():
+    raise ValueError('department_master의 부서명 결측 또는 중복')
+if topic_function_map['topic_code'].duplicated().any():
+    raise ValueError('topic_function_map의 코드 중복')
+def enabled_flag(value):
+    return clean_text(value).lower() in {'true', '1', '1.0', 'yes', 'y'}
+department_master['routing_enabled'] = department_master['routing_enabled'].map(enabled_flag)
+location_master['match_priority'] = pd.to_numeric(location_master['match_priority'], errors='coerce').fillna(0)
+function_lookup = topic_function_map.set_index('topic_code').to_dict('index')
+MASTER_HASH = hashlib.sha256(ROUTING_MASTER_PATH.read_bytes()).hexdigest()
+
+def location_key(value):
+    value = re.sub(r'\s+', '', unicodedata.normalize('NFC', clean_text(value)))
+    return value[:-1] if value.endswith('역') else value
+
+def lookup_location(candidate):
+    key = location_key(candidate)
+    empty = {'표준위치': None, '관할본부': None, '관할지역코드': None,
+             '위치매핑상태': '위치없음' if not key else '미매핑', '위치검증상태': None}
+    if not key:
+        return empty
+    # 부분 문자열 매칭 금지: 광주와 광주송정, 서울과 서울대 등 오매핑 방지.
+    matched = location_master.loc[
+        location_master['location_keyword'].map(location_key).eq(key)
+        | location_master['canonical_location'].map(location_key).eq(key)
+    ].copy()
+    matched = matched.loc[matched['region_headquarters'].ne('') & matched['region_code'].ne('미사용')
+                          & matched['match_priority'].gt(0)]
+    if matched.empty:
+        return empty
+    if matched['region_headquarters'].nunique() != 1 or matched['region_code'].nunique() != 1:
+        return {**empty, '위치매핑상태': '관할모호'}
+    item = matched.sort_values('match_priority', ascending=False).iloc[0]
+    return {'표준위치': item['canonical_location'], '관할본부': item['region_headquarters'],
+            '관할지역코드': item['region_code'], '위치매핑상태': '매핑완료',
+            '위치검증상태': item['verification_status']}
+
+# 기준표 간 명칭 차이에 대한 명시적 대응. 기관 업무분장 검증 후 수정 가능합니다.
+FUNCTION_EQUIVALENTS = {
+    '시설·건축': ['시설'], '시설·주차': ['시설'], '시설·건설': ['시설'],
+    '기획·경영/홍보': ['기획·경영', '홍보·문화'],
+    '기획·제도': ['기획·경영'],
+}
+def lookup_function(topic_code):
+    item = function_lookup.get(clean_text(topic_code), {})
+    function = clean_text(item.get('suggested_business_function'))
+    choices = FUNCTION_EQUIVALENTS.get(function, [function] if function and function != '검토필요' else [])
+    return {'업무기능': function or None, '업무기능후보': choices,
+            '기준표_scope_hint': clean_text(item.get('scope_hint')) or None}
+
+def attach_department_attributes(frame):
+    attrs = department_master[['department', 'parent_org', 'region_code', 'business_function',
+                               'scope', 'routing_enabled']].rename(columns={
+        'department': 'master_department', 'parent_org': 'dept_parent_org',
+        'region_code': 'dept_region_code', 'business_function': 'dept_business_function',
+        'scope': 'dept_scope', 'routing_enabled': 'dept_routing_enabled',
+    })
+    columns = [x for x in frame if x.startswith('dept_') or x == 'master_department']
+    merged = frame.drop(columns=columns, errors='ignore').merge(
+        attrs, left_on='handling_team', right_on='master_department', how='left', validate='many_to_one'
+    )
+    # handling_team 원본값은 유지. 미등록/제외 부서는 검색 후보에서만 제외.
+    return merged
+
+print('라우팅 기준표:', ROUTING_MASTER_PATH.name)
+print('위치:', len(location_master), '| 부서:', len(department_master), '| 요지기능:', len(topic_function_map))

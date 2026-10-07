@@ -1,0 +1,80 @@
+def clean_text(value):
+    if value is None or (not isinstance(value, (list, dict)) and pd.isna(value)):
+        return ''
+    text = str(value).strip()
+    return '' if text.lower() in {'nan', 'none', 'null', '<na>'} else text
+
+def clean_id(value):
+    text = clean_text(value)
+    return text[:-2] if re.fullmatch(r'\d+\.0', text) else text
+
+def assert_columns(frame, required, name):
+    missing = sorted(set(required) - set(frame.columns))
+    if missing:
+        raise ValueError(f'{name} 필수 컬럼 없음: {missing}')
+
+topic_df = pd.read_excel(SOURCE_PATH, sheet_name='요지코드')
+db_df = pd.read_excel(SOURCE_PATH, sheet_name='원본(DB형식)')
+assert_columns(topic_df, ['코드', '대분류명', '요지'], '요지코드')
+assert_columns(db_df, ['id', 'intake_channel', 'handling_team', 'full_text', 'subject', 'body'], '원본 DB')
+topic_df = topic_df.dropna(subset=['코드', '요지']).copy()
+topic_df['코드'] = topic_df['코드'].map(clean_text)
+if topic_df['코드'].eq('').any() or topic_df['코드'].duplicated().any():
+    raise ValueError('요지코드 결측 또는 중복')
+CODEBOOK = topic_df.set_index('코드')[['대분류명', '요지']].to_dict('index')
+CODEBOOK_TEXT = '\n'.join(f'{key} | {item["대분류명"]} | {item["요지"]}' for key, item in CODEBOOK.items())
+CODEBOOK_HASH = hashlib.sha256(CODEBOOK_TEXT.encode('utf-8')).hexdigest()
+
+db_df['번호'] = db_df['id'].map(clean_id)
+if db_df['번호'].eq('').any() or db_df['번호'].duplicated().any():
+    raise ValueError('원본 DB의 번호 결측 또는 중복')
+if 'dup_of_id' not in db_df:
+    db_df['dup_of_id'] = ''
+db_df['dup_of_id'] = db_df['dup_of_id'].map(clean_id)
+db_df['handling_team'] = db_df['handling_team'].map(clean_text)
+def complaint_text(row):
+    full = clean_text(row['full_text'])
+    return full or '\n'.join(x for x in [clean_text(row['subject']), clean_text(row['body'])] if x)
+db_df['민원내용'] = db_df.apply(complaint_text, axis=1)
+
+# 정답은 별도 표로 격리합니다. 프롬프트에는 민원내용과 코드북만 전달합니다.
+truth_columns = [x for x in ['번호', 'topic_code', 'topic_code_secondary', 'handling_team', 'has_label_noise'] if x in db_df]
+evaluation_truth_df = db_df[truth_columns].copy()
+df = db_df[['번호', 'subject', '민원내용', 'intake_channel', 'handling_team', 'dup_of_id']].copy()
+df['입력검증상태'] = np.where(df['민원내용'].eq(''), '민원내용_없음', '분석가능')
+
+# Union-find로 원본 중복 ID와 동일 내용을 하나의 그룹에 묶습니다.
+parent = {key: key for key in df['번호']}
+def find_root(key):
+    while parent[key] != key:
+        parent[key] = parent[parent[key]]
+        key = parent[key]
+    return key
+def union(left, right):
+    a, b = find_root(left), find_root(right)
+    if a != b:
+        parent[max(a, b)] = min(a, b)
+seen_text = {}
+for _, row in df.iterrows():
+    key = row['번호']
+    duplicate = row['dup_of_id']
+    if duplicate in parent:
+        union(key, duplicate)
+    text = clean_text(row['민원내용'])
+    if text:
+        digest = hashlib.sha256(text.encode('utf-8')).hexdigest()
+        if digest in seen_text:
+            union(key, seen_text[digest])
+        else:
+            seen_text[digest] = key
+df['중복그룹'] = df['번호'].map(find_root)
+if SPLIT_MODE not in {'holdout', 'demo'} or not 0 < HISTORY_FRACTION < 1:
+    raise ValueError('SPLIT_MODE와 HISTORY_FRACTION 설정을 확인하세요.')
+def assign_role(group):
+    if SPLIT_MODE == 'demo':
+        return '검색이력'
+    value = int(hashlib.sha256((SPLIT_SEED + group).encode()).hexdigest()[:8], 16) / 2**32
+    return '검색이력' if value < HISTORY_FRACTION else '검토대상'
+df['데이터역할'] = df['중복그룹'].map(assign_role)
+print('원본 민원:', len(df), '| 중복 그룹:', df['중복그룹'].nunique())
+display(df.groupby(['입력검증상태', '데이터역할']).size().reset_index(name='건수'))
