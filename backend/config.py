@@ -31,6 +31,7 @@ class Settings:
     top_k: int = int(os.getenv("TOP_K", "10"))
     top_n: int = int(os.getenv("TOP_N", "3"))
     min_similarity: float = float(os.getenv("MIN_SIMILARITY", "0.55"))
+    analysis_min_similarity: float = float(os.getenv("ANALYSIS_MIN_SIMILARITY", "0.35"))
     min_support: int = int(os.getenv("MIN_SUPPORT", "2"))
     min_score_margin: float = float(os.getenv("MIN_SCORE_MARGIN", "0.03"))
     host: str = os.getenv("HOST", "127.0.0.1")
@@ -47,3 +48,6 @@ if settings.device not in {"cuda", "cpu"} or settings.quantization not in {
 }:
     raise ValueError("모델 설정 오류")
 settings.output.mkdir(parents=True, exist_ok=True)
+
+if not 0 <= settings.analysis_min_similarity <= 1:
+    raise ValueError("ANALYSIS_MIN_SIMILARITY must be between 0 and 1")

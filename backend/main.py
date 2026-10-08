@@ -106,6 +106,7 @@ def stats():
         history_complete=svc().history_complete,
         history_preparation_done=svc().history_preparation_done,
         history_failed=svc().history_failed,
+        history_quality_excluded=getattr(svc(), "history_quality_excluded", 0),
         model_ready=svc().ready,
         initialization_error=svc().error,
         model=settings.qwen_model,

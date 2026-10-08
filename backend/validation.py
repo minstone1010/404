@@ -33,6 +33,13 @@ def validate(raw, stage):
             and not isinstance(item, str)
         ):
             raise ValueError("문자열 타입 오류: " + key)
+    if (
+        stage == "routing"
+        and "location_role" in value
+        and value["location_role"]
+        not in {"incident", "departure", "destination", "route", "unknown"}
+    ):
+        raise ValueError("location_role 값 오류")
     parser = {
         "topic": logic.parse_topic,
         "cause": logic.parse_cause,

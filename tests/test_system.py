@@ -9,7 +9,8 @@ from backend.routing import restrict_routing_candidates
 from backend.service import Service
 
 
-def test_holdout_groups():
+def test_holdout_groups(monkeypatch):
+    monkeypatch.setattr(Service, "rebuild_index", lambda self: None)
     assert len(l.df) == 2500
     assert l.df.groupby("중복그룹").데이터역할.nunique().max() == 1
     s = Service()
@@ -54,7 +55,8 @@ def test_strict_nulls():
             )
 
 
-def test_master_and_channel():
+def test_master_and_channel(monkeypatch):
+    monkeypatch.setattr(Service, "rebuild_index", lambda self: None)
     assert l.lookup_location("수원역")["관할본부"] == "수도권서부본부"
     assert l.lookup_location("없는역")["위치매핑상태"] == "미매핑"
     assert l.lookup_location("광주송정역")["표준위치"] == "광주송정역"
@@ -105,7 +107,7 @@ def test_fallback_and_no_leak(monkeypatch):
         "업무기능후보": ["IT"],
     }
     pool, note = restrict_routing_candidates(row)
-    assert len(pool) == 2
+    assert pool.empty and pool.attrs["routing_constraints"]["mapping_gap"]
     assert (
         l.rank_departments(frame.assign(similarity=[0.9, 0.8, 0.7])).iloc[0].department
         == "지역시설"

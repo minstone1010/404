@@ -58,6 +58,9 @@ def test_reads_and_evaluation_do_not_publish_manual_results(tmp_path, monkeypatc
     )
     monkeypatch.setattr(logic, "recommend_department", lambda row: recommendation)
     monkeypatch.setattr(
+        "backend.service.dual_recommend", lambda service, row: recommendation
+    )
+    monkeypatch.setattr(
         logic,
         "restrict_routing_candidates",
         lambda row: (logic.history_df, "시험"),
@@ -143,7 +146,7 @@ def test_failed_manual_rerun_replaces_old_display_result(tmp_path, monkeypatch):
             "recommendation": {"status": "추천가능"},
         },
     )
-    result = s.recommend("1", force=True, source="manual")
+    result = s.recommend("1", mode="A", force=True, source="manual")
     assert (
         result["analysis"]["분석상태"] == "분석오류"
         and result["execution_source"] == "manual"

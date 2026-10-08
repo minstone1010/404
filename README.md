@@ -1,3 +1,7 @@
+# 현재 추천 흐름: 원문·분석 비교 검색
+
+실시간 추천은 원문 검색과 Qwen 분석 검색을 분리해 비교합니다. 구조와 화면 해석은 [원문·분석 비교 검색 설명](DUAL_RETRIEVAL_GUIDE.md)을 참고하세요. 기존 문서의 검색 중단 설명보다 이 최신 흐름을 우선합니다.
+
 # VOC Desk: 기존 Notebook + Routing Master + voc-ui 통합
 
 현재 PC의 **WSL Ubuntu / Conda voc / Python 3.11**에서 실행하도록 구성했습니다. Windows 브라우저는 http://127.0.0.1:8001 에 접속합니다. 네 원본 파일은 유지했고 UI의 기존 CSS를 변경하지 않았습니다. 최신 공식 조직 조회 시스템이 아니라 제공된 더미 라벨을 검증하는 프로젝트입니다.
@@ -150,7 +154,7 @@ Master는 프로젝트용 제한 기준표이며 최신 코레일 전체 조직/
 
 ## 화면 분석 실행 방식 수정
 
-검토 대상은 목록 조회·선택·새로고침으로 분석되지 않습니다. POST /api/vocs/{id}/analyze는 버튼 클릭 때만 호출하며 매번 새 분석을 실행합니다. 사용자 실행 결과는 manual_analyses 테이블에 실행 출처와 UTC 시각을 기록하고 이후 새로고침에서 복원합니다. 버튼은 저장된 사용자 분석이 있으면 재분석으로 표시됩니다. 평가 CLI/API 결과는 이 테이블을 변경하지 않습니다. 기존 출처 미기록 분석 캐시는 보존하되 기본 화면에서 제외합니다. 과거 검색 이력의 백그라운드 준비는 별도 기능이며 검토 VOC의 분석·승인 상태를 변경하지 않습니다.
+검토 대상은 목록에서 직접 클릭하면 미분석 건에 한해 자동 분석합니다. 저장된 최신 사용자 분석이 있으면 재사용하며, 최초 페이지 로드와 새로고침은 분석을 실행하지 않습니다. 같은 VOC의 진행 중 요청은 중복 실행하지 않습니다. POST /api/vocs/{id}/analyze는 목록 선택 또는 재분석 버튼으로 호출합니다. 분석 중에는 승인·보류를 비활성화하며, 분석 완료만으로 승인하지 않습니다. 다른 VOC 분석이 완료되어도 현재 작성 중인 부서 선택과 메모는 유지합니다. 사용자 실행 결과는 manual_analyses 테이블에 실행 출처와 UTC 시각을 기록하고 이후 새로고침에서 복원합니다. 버튼은 저장된 사용자 분석이 있으면 재분석으로 표시됩니다. 평가 CLI/API 결과는 이 테이블을 변경하지 않습니다. 기존 출처 미기록 분석 캐시는 보존하되 기본 화면에서 제외합니다. 과거 검색 이력의 백그라운드 준비는 별도 기능이며 검토 VOC의 분석·승인 상태를 변경하지 않습니다.
 
 ## BERTopic 누적 VOC 분석 (실시간 추천과 독립)
 
@@ -214,9 +218,54 @@ Python은 4칸 들여쓰기와 88자 줄 길이, JavaScript는 2칸 들여쓰기
 ```bash
 python -m pip install -r requirements-format.txt
 python -m black backend tests scripts
-js-beautify -r -f voc-ui/dist/app.js --config .jsbeautifyrc
-js-beautify -r -f voc-ui/dist/topics.js --config .jsbeautifyrc
+js-beautify -r -s 2 -w 100 -n voc-ui/dist/app.js
+js-beautify -r -s 2 -w 100 -n voc-ui/dist/topics.js
 python -m pytest -q
 ```
 
 설정: pyproject.toml 및 .jsbeautifyrc. 서식 변경의 Python/JavaScript 구문 구조 동일성 확인 결과는 outputs/formatting_report.json에 기록했습니다. 이전 소스는 outputs/formatting_before/에 보존했습니다. smoke_data.py의 중간 BOM 문자는 제거했습니다.
+
+## 요지·관할 추천 검증 개선 (2026-10-08)
+
+Qwen은 요지 선택 전에 target(핵심 대상), problem(문제 상태), evidence(원문의 짧은 근거)를 출력합니다. 원문 근거 누락 및 명확한 열차지연/승강설비/직원응대 혼동을 검사하고, 해당 topic 단계만 한 번 재시도합니다. 계속 실패하면 검색 후보를 제공하되 확정 추천을 보류합니다. 이 규칙은 모든 의미 오분류를 검출하는 검증기가 아닙니다.
+
+위치에는 incident/departure/destination/route/unknown 역할을 추가했습니다. 역 현장 시설·직원 문제의 직접 근거가 확인되면 scope를 지역형으로 정리하고 Master 관할을 적용합니다. 역명 뒤 광장·매표소 등 알려진 부가 표현만 제거해 정확히 Master 조회하며, 퍼지 매칭이나 조직명 생성은 하지 않습니다. 출발/도착/경로 위치는 사건 관할로 사용하지 않습니다. 관할 미확정 또는 관할 조건을 완화한 검색은 참고 후보로 표시하며 추천가능을 반환하지 않습니다.
+
+부서명은 handling_team 원본을 유지하고 화면에 더미 VOC 처리부서라는 출처, 최신 공식 명칭 미검증, 관할 일치 여부를 표시합니다. 공식 조직명으로 임의 변환하지 않습니다.
+
+새 프롬프트·의미 검증 버전은 cache signature에 포함합니다. 기존 사용자 결과는 새 버전의 완료 결과로 노출하지 않으므로 화면에서 재분석해야 합니다. 과거 이력은 기존 raw 분석으로 재검증하고 명확한 요지 모순이 있는 이력을 인덱스에서 제외합니다. 전 이력을 새 Qwen 프롬프트로 재분석한 것은 아닙니다.
+
+검증: `python -m pytest -q` (27개 통과). 실제 Qwen 재현: `python scripts/test_routing_guard_real.py` (별도 outputs/routing_guard_validation 저장소 사용). 브라우저 시험은 해당 별도 저장소로 실행한8002 서버에서 `python scripts/test_routing_guard_browser.py`를 실행합니다. 실험 승인은 생성하지 않으며 사용자 결과를 수정하지 않습니다. 상세: ROUTING_IMPROVEMENT_REPORT.md.
+## 지역·업무·scope 우선 추천
+
+확정 지역형 민원은 해당 지역 및 지역 scope, 전국형 민원은 전국/광역/본사 scope로 후보를 먼저 제한합니다. 업무기능은 요지코드와 Master 조회로 결정합니다. 모든 조건에 맞는 이력이 한 건뿐이어도 다른 업무 후보를 섞지 않고 근거 부족으로 보류합니다.
+
+검색 결과에는 `routing_constraints`를 저장합니다. `strict`는 지역 또는 전국 범위와 업무 조건을 모두 적용한 검색입니다. `scope_only`, `function_only`, `full`은 조건을 완화한 참고 검색이며 자동 추천 가능 상태로 전환하지 않습니다. Master 미등록·비활성·불완전 부서는 검색 이력에서 제외합니다. 감사 결과는 `outputs/department_mapping_audit.json`에 기록합니다.
+
+추천 후보에는 `routing_eligibility`를 추가했습니다. 최종 1순위의 실제 Master 지역·업무·scope를 재검증하며 유사도와 빈도가 높아도 불일치하면 추천 보류합니다. 근거 건수/유사도/점수차 기준도 함께 통과해야 추천 가능합니다. 승인·보류는 사용자 버튼으로만 저장합니다. 평가 A/B 비교 경로는 유지되며 운영 추천은 C 경로를 사용합니다.
+
+캐시 의미 검증 버전은 `semantic-routing-v3`입니다. 이전 분석은 과거 이력 재검증에 활용하지만 기존 화면의 오래된 추천 결과는 재사용하지 않습니다. 변경 후 서버 재시작과 브라우저 Ctrl+F5가 필요합니다.
+## 칭찬 의도와 업무 매핑 공백 처리
+
+Qwen 요지 분석에 `voc_intent`(칭찬/불만/문의/제안/복합/확인필요), `request_summary`, `intent_evidence`를 추가했습니다. 핵심 요청과 민원 의도를 Embedding 텍스트 앞부분에 반영하며, 칭찬 요청은 칭찬으로 확인된 이력만 검색합니다. 불만 검색에서는 순수 칭찬 이력을 제외합니다. 예전 이력의 의도는 원문에서 확인되는 명시적 표현으로 보수적으로 보강하며, 판별 근거가 없으면 확인필요로 유지합니다. 복합 의도는 담당자 검토 대상으로 처리합니다.
+
+Qwen의 의도 값 `감사`는 `칭찬`으로 정규화하고 원래 출력값도 보존합니다. 그 외 미지원 값은 검증 실패로 처리합니다. 의도 근거의 원문 존재 여부, 실제 내용 대신 코드만 출력한 대상/문제, 열차 승무원(F2)과 역직원(F1) 혼동을 검증합니다.
+
+`topic_function_map`의 업무기능이 활성 부서 Master에 연결되지 않으면 전체 검색으로 확대하지 않습니다. API는 `routing_constraints.mapping_gap=true`, 빈 ranking/evidence, 추천보류와 소속 확인 안내를 반환합니다. 현재 F2의 승무·서비스는 이에 해당합니다. 공식 업무분장 확인 없이 여객·서비스로 자동 연결하지 않습니다. UI에는 민원 의도, 핵심 요청, 의도 원문 근거를 표시합니다.
+
+캐시 버전은 `semantic-routing-v4-intent-r1`입니다. 기존 이력을 재검증하고 새 Embedding 인덱스를 생성하며 기존 추천은 새 분석 전 화면에서 재사용하지 않습니다. 원본 Excel과 Master는 변경하지 않습니다.
+
+시험: `python -m pytest -q`, `python scripts/test_praise_real.py`. 실제 모델 시험은 별도 `outputs/praise_validation/`에 저장하며 운영 승인 데이터는 변경하지 않습니다. BERTopic은 실시간 추천의 필수 단계로 추가하지 않았습니다.
+
+
+## 요지·원인 원문 검증 강화
+
+승무원 행동이 없는 글의 F2 분류를 차단하고 재시도합니다. 객실 벌레/청결은 E3를 검토하되 원문에 승무원 응대도 있으면 별도로 판단합니다. 코드를 규칙으로 자동 덮어쓰지 않습니다.
+
+Qwen이 evidence_id/intent_evidence_id를 선택하면 서버가 번호에 해당하는 원문을 그대로 연결합니다. 원문 오탈자와 표현을 보존하며 모델의 원출력도 별도로 남깁니다. 번호 범위/타입이 틀리면 검증 실패로 재시도합니다. 기존 모델 출력의 직접 인용도 원문 존재 여부를 검증합니다.
+
+원인 분석은 cause_claims(주체/행동/원문 근거/확정 여부)와 cause_certainty를 반환합니다. 원문에 없는 직원, 행동 주체 변경, 원문에 없는 행동·근거, 질문/추측의 확정화를 검사합니다. 재시도 후에도 실패하면 cause_analysis_status=review_required, 원인 요인=null로 기록하고 원출력은 cause_original 및 raw에 보존합니다. 원인만 실패한 경우 유효한 요지와 라우팅은 계속 사용합니다. 실패한 원인 요인은 Embedding에서 제외합니다. 원인 미확정과 문제 원인 해당 없음, 분석 실패는 구분합니다.
+
+기존 이력의 원인도 검증하며 근거 없는 예전 원인 필드는 검토 대상으로 바꿉니다. 전체 이력의 Qwen 추론을 다시 실행한 것은 아닙니다. 검색 인덱스는 새 입력으로 재생성합니다. 캐시 버전은 semantic-routing-v5-evidence-r2입니다.
+
+시험: python -m pytest -q / python scripts/test_evidence_real.py / python scripts/test_evidence_browser.py. 실제 모델 시험 결과는 outputs/evidence_validation/에 저장합니다.
