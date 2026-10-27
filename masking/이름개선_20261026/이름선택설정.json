@@ -1,0 +1,83 @@
+{
+  "weights": "name_expert",
+  "threshold": 0.9,
+  "validation": {
+    "documents": 1706,
+    "overall": {
+      "tp": 177,
+      "fp": 3,
+      "fn": 9,
+      "precision": 0.9833333333333333,
+      "recall": 0.9516129032258065,
+      "f1": 0.9672131147540983,
+      "f2": 0.9577922077922079
+    },
+    "by_type": {
+      "name": {
+        "tp": 177,
+        "fp": 3,
+        "fn": 9,
+        "precision": 0.9833333333333333,
+        "recall": 0.9516129032258065,
+        "f1": 0.9672131147540983,
+        "f2": 0.9577922077922079
+      },
+      "address": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "f2": 0.0
+      },
+      "email": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "f2": 0.0
+      },
+      "phone": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "f2": 0.0
+      },
+      "ticket_no": {
+        "tp": 0,
+        "fp": 0,
+        "fn": 0,
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "f2": 0.0
+      }
+    },
+    "gold_count": 186,
+    "fully_masked_count": 178,
+    "full_span_mask_rate": 0.956989247311828,
+    "pii_documents": 185,
+    "complete_documents": 177,
+    "complete_document_rate": 0.9567567567567568,
+    "clean_documents": 1521,
+    "clean_false_documents": 1,
+    "clean_false_rate": 0.0006574621959237344,
+    "exact_match_documents": 1696,
+    "document_exact_match_rate": 0.9941383352872216
+  },
+  "epoch": 2,
+  "selection": "name F1 on validation only, including existing weights + boundary baseline",
+  "existing_test_previously_inspected": true,
+  "train_rows": 7963,
+  "validation_rows": 1706,
+  "training_examples_with_oversampling": 12476,
+  "epochs": 3,
+  "frozen_before_regression_test": true,
+  "other_four_types": "unchanged previous-model predictions; name proposals overlapping them rejected"
+}

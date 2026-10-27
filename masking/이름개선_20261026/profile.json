@@ -1,0 +1,1 @@
+{"name":"이름 보완 5종 마스킹 모델", "profile":"name_improved", "model":"name_expert", "mask_types":["name","address","email","phone","ticket_no"]}

@@ -269,3 +269,7 @@ Qwen이 evidence_id/intent_evidence_id를 선택하면 서버가 번호에 해�
 기존 이력의 원인도 검증하며 근거 없는 예전 원인 필드는 검토 대상으로 바꿉니다. 전체 이력의 Qwen 추론을 다시 실행한 것은 아닙니다. 검색 인덱스는 새 입력으로 재생성합니다. 캐시 버전은 semantic-routing-v5-evidence-r2입니다.
 
 시험: python -m pytest -q / python scripts/test_evidence_real.py / python scripts/test_evidence_browser.py. 실제 모델 시험 결과는 outputs/evidence_validation/에 저장합니다.
+
+## 로컬 개인정보 마스킹
+
+이름·주소·이메일·휴대폰번호·승차권번호를 처리하는 GPU 실행 모델은 [masking 실행 안내](masking/README.md)를 참고하세요. 기존 VOC 프로그램과 별도 실행합니다.
