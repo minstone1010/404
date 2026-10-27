@@ -124,5 +124,3 @@ print(f"발견된 PII: {len(result.entities)}개")
 ## 라이센스
 
 MIT License
-
-
