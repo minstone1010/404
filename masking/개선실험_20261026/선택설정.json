@@ -1,0 +1,85 @@
+{
+  "rules": "ticket_variants",
+  "thresholds": {
+    "name": 0.8,
+    "address": 0.7,
+    "email": 0.7,
+    "phone": 0.7,
+    "ticket_no": 0.9
+  },
+  "validation": {
+    "documents": 1706,
+    "overall": {
+      "tp": 2028,
+      "fp": 72,
+      "fn": 104,
+      "precision": 0.9657142857142857,
+      "recall": 0.9512195121951219,
+      "f1": 0.9584120982986768,
+      "f2": 0.9540835528791871
+    },
+    "by_type": {
+      "name": {
+        "tp": 153,
+        "fp": 26,
+        "fn": 33,
+        "precision": 0.8547486033519553,
+        "recall": 0.8225806451612904,
+        "f1": 0.8383561643835615,
+        "f2": 0.8288190682556882
+      },
+      "address": {
+        "tp": 322,
+        "fp": 15,
+        "fn": 14,
+        "precision": 0.9554896142433235,
+        "recall": 0.9583333333333334,
+        "f1": 0.9569093610698366,
+        "f2": 0.957763236168947
+      },
+      "email": {
+        "tp": 506,
+        "fp": 9,
+        "fn": 6,
+        "precision": 0.9825242718446602,
+        "recall": 0.98828125,
+        "f1": 0.98539435248296,
+        "f2": 0.9871244635193132
+      },
+      "phone": {
+        "tp": 751,
+        "fp": 19,
+        "fn": 40,
+        "precision": 0.9753246753246754,
+        "recall": 0.9494310998735778,
+        "f1": 0.9622037155669443,
+        "f2": 0.954499237417387
+      },
+      "ticket_no": {
+        "tp": 296,
+        "fp": 3,
+        "fn": 11,
+        "precision": 0.9899665551839465,
+        "recall": 0.9641693811074918,
+        "f1": 0.9768976897689768,
+        "f2": 0.9692206941715784
+      }
+    },
+    "gold_count": 2132,
+    "fully_masked_count": 2067,
+    "full_span_mask_rate": 0.9695121951219512,
+    "pii_documents": 1253,
+    "complete_documents": 1190,
+    "complete_document_rate": 0.9497206703910615,
+    "clean_documents": 453,
+    "clean_false_documents": 1,
+    "clean_false_rate": 0.002207505518763797,
+    "exact_match_documents": 1594,
+    "document_exact_match_rate": 0.9343493552168816
+  },
+  "llm_enabled": false,
+  "selection_scope": "validation only; precision floor .88 then highest F2",
+  "internal_test_previously_inspected": true,
+  "frozen_before_test_inference": true,
+  "timestamp": "2026-10-26T20:35:32"
+}

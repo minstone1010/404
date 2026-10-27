@@ -1,0 +1,17 @@
+{
+  "release_tag": "masking-v2026.10.27",
+  "files": [
+    {
+      "path": "개선실험_20261026/candidate_ner/model.safetensors",
+      "asset": "pii-five-type-model.safetensors",
+      "size": 1333454604,
+      "sha256": "0be9e2a5078863721c9da81f807195dbf8190c0f9b9976489fa801278f494bf3"
+    },
+    {
+      "path": "이름개선_20261026/name_expert/model.safetensors",
+      "asset": "pii-name-expert-model.safetensors",
+      "size": 1333421796,
+      "sha256": "40c2e3f20e7d7e285a02123f1f948db42f097c8b606f31f690a0ac9270808d05"
+    }
+  ]
+}

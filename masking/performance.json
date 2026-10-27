@@ -1,0 +1,373 @@
+{
+  "evaluation_scope": "Previously inspected internal group test: regression comparison, not new external blind evaluation. New name expert and rule/threshold choices selected on training/validation only.",
+  "selection": {
+    "weights": "name_expert",
+    "threshold": 0.9,
+    "validation": {
+      "documents": 1706,
+      "overall": {
+        "tp": 177,
+        "fp": 3,
+        "fn": 9,
+        "precision": 0.9833333333333333,
+        "recall": 0.9516129032258065,
+        "f1": 0.9672131147540983,
+        "f2": 0.9577922077922079
+      },
+      "by_type": {
+        "name": {
+          "tp": 177,
+          "fp": 3,
+          "fn": 9,
+          "precision": 0.9833333333333333,
+          "recall": 0.9516129032258065,
+          "f1": 0.9672131147540983,
+          "f2": 0.9577922077922079
+        },
+        "address": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "f2": 0.0
+        },
+        "email": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "f2": 0.0
+        },
+        "phone": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "f2": 0.0
+        },
+        "ticket_no": {
+          "tp": 0,
+          "fp": 0,
+          "fn": 0,
+          "precision": 0.0,
+          "recall": 0.0,
+          "f1": 0.0,
+          "f2": 0.0
+        }
+      },
+      "gold_count": 186,
+      "fully_masked_count": 178,
+      "full_span_mask_rate": 0.956989247311828,
+      "pii_documents": 185,
+      "complete_documents": 177,
+      "complete_document_rate": 0.9567567567567568,
+      "clean_documents": 1521,
+      "clean_false_documents": 1,
+      "clean_false_rate": 0.0006574621959237344,
+      "exact_match_documents": 1696,
+      "document_exact_match_rate": 0.9941383352872216
+    },
+    "epoch": 2,
+    "selection": "name F1 on validation only, including existing weights + boundary baseline",
+    "existing_test_previously_inspected": true,
+    "train_rows": 7963,
+    "validation_rows": 1706,
+    "training_examples_with_oversampling": 12476,
+    "epochs": 3,
+    "frozen_before_regression_test": true,
+    "other_four_types": "unchanged previous-model predictions; name proposals overlapping them rejected"
+  },
+  "comparisons": {
+    "validation": {
+      "before": {
+        "documents": 1706,
+        "overall": {
+          "tp": 2027,
+          "fp": 72,
+          "fn": 105,
+          "precision": 0.9656979514054311,
+          "recall": 0.950750469043152,
+          "f1": 0.9581659182226424,
+          "f2": 0.9537028324080172
+        },
+        "by_type": {
+          "name": {
+            "tp": 152,
+            "fp": 26,
+            "fn": 34,
+            "precision": 0.8539325842696629,
+            "recall": 0.8172043010752689,
+            "f1": 0.8351648351648352,
+            "f2": 0.8242950108459871
+          },
+          "address": {
+            "tp": 322,
+            "fp": 15,
+            "fn": 14,
+            "precision": 0.9554896142433235,
+            "recall": 0.9583333333333334,
+            "f1": 0.9569093610698366,
+            "f2": 0.957763236168947
+          },
+          "email": {
+            "tp": 506,
+            "fp": 9,
+            "fn": 6,
+            "precision": 0.9825242718446602,
+            "recall": 0.98828125,
+            "f1": 0.98539435248296,
+            "f2": 0.9871244635193132
+          },
+          "phone": {
+            "tp": 751,
+            "fp": 19,
+            "fn": 40,
+            "precision": 0.9753246753246754,
+            "recall": 0.9494310998735778,
+            "f1": 0.9622037155669443,
+            "f2": 0.954499237417387
+          },
+          "ticket_no": {
+            "tp": 296,
+            "fp": 3,
+            "fn": 11,
+            "precision": 0.9899665551839465,
+            "recall": 0.9641693811074918,
+            "f1": 0.9768976897689768,
+            "f2": 0.9692206941715784
+          }
+        },
+        "gold_count": 2132,
+        "fully_masked_count": 2066,
+        "full_span_mask_rate": 0.9690431519699813,
+        "pii_documents": 1253,
+        "complete_documents": 1189,
+        "complete_document_rate": 0.9489225857940942,
+        "clean_documents": 453,
+        "clean_false_documents": 1,
+        "clean_false_rate": 0.002207505518763797,
+        "exact_match_documents": 1593,
+        "document_exact_match_rate": 0.9337631887456037
+      },
+      "after": {
+        "documents": 1706,
+        "overall": {
+          "tp": 2052,
+          "fp": 49,
+          "fn": 80,
+          "precision": 0.9766777724892908,
+          "recall": 0.9624765478424016,
+          "f1": 0.969525159461375,
+          "f2": 0.9652836579170196
+        },
+        "by_type": {
+          "name": {
+            "tp": 177,
+            "fp": 3,
+            "fn": 9,
+            "precision": 0.9833333333333333,
+            "recall": 0.9516129032258065,
+            "f1": 0.9672131147540983,
+            "f2": 0.9577922077922079
+          },
+          "address": {
+            "tp": 322,
+            "fp": 15,
+            "fn": 14,
+            "precision": 0.9554896142433235,
+            "recall": 0.9583333333333334,
+            "f1": 0.9569093610698366,
+            "f2": 0.957763236168947
+          },
+          "email": {
+            "tp": 506,
+            "fp": 9,
+            "fn": 6,
+            "precision": 0.9825242718446602,
+            "recall": 0.98828125,
+            "f1": 0.98539435248296,
+            "f2": 0.9871244635193132
+          },
+          "phone": {
+            "tp": 751,
+            "fp": 19,
+            "fn": 40,
+            "precision": 0.9753246753246754,
+            "recall": 0.9494310998735778,
+            "f1": 0.9622037155669443,
+            "f2": 0.954499237417387
+          },
+          "ticket_no": {
+            "tp": 296,
+            "fp": 3,
+            "fn": 11,
+            "precision": 0.9899665551839465,
+            "recall": 0.9641693811074918,
+            "f1": 0.9768976897689768,
+            "f2": 0.9692206941715784
+          }
+        },
+        "gold_count": 2132,
+        "fully_masked_count": 2078,
+        "full_span_mask_rate": 0.974671669793621,
+        "pii_documents": 1253,
+        "complete_documents": 1200,
+        "complete_document_rate": 0.9577015163607342,
+        "clean_documents": 453,
+        "clean_false_documents": 1,
+        "clean_false_rate": 0.002207505518763797,
+        "exact_match_documents": 1624,
+        "document_exact_match_rate": 0.9519343493552169
+      }
+    },
+    "test": {
+      "before": {
+        "documents": 1706,
+        "overall": {
+          "tp": 2049,
+          "fp": 90,
+          "fn": 121,
+          "precision": 0.9579242636746143,
+          "recall": 0.9442396313364055,
+          "f1": 0.9510327222093292,
+          "f2": 0.9469451890193178
+        },
+        "by_type": {
+          "name": {
+            "tp": 167,
+            "fp": 31,
+            "fn": 34,
+            "precision": 0.8434343434343434,
+            "recall": 0.8308457711442786,
+            "f1": 0.8370927318295739,
+            "f2": 0.8333333333333334
+          },
+          "address": {
+            "tp": 339,
+            "fp": 9,
+            "fn": 10,
+            "precision": 0.9741379310344828,
+            "recall": 0.9713467048710601,
+            "f1": 0.9727403156384505,
+            "f2": 0.9719036697247705
+          },
+          "email": {
+            "tp": 478,
+            "fp": 19,
+            "fn": 12,
+            "precision": 0.9617706237424547,
+            "recall": 0.9755102040816327,
+            "f1": 0.9685916919959473,
+            "f2": 0.9727309727309728
+          },
+          "phone": {
+            "tp": 734,
+            "fp": 28,
+            "fn": 55,
+            "precision": 0.963254593175853,
+            "recall": 0.9302915082382763,
+            "f1": 0.9464861379754997,
+            "f2": 0.9367023991832567
+          },
+          "ticket_no": {
+            "tp": 331,
+            "fp": 3,
+            "fn": 10,
+            "precision": 0.9910179640718563,
+            "recall": 0.9706744868035191,
+            "f1": 0.9807407407407407,
+            "f2": 0.9746760895170788
+          }
+        },
+        "gold_count": 2170,
+        "fully_masked_count": 2096,
+        "full_span_mask_rate": 0.9658986175115207,
+        "pii_documents": 1258,
+        "complete_documents": 1184,
+        "complete_document_rate": 0.9411764705882353,
+        "clean_documents": 448,
+        "clean_false_documents": 2,
+        "clean_false_rate": 0.004464285714285714,
+        "exact_match_documents": 1568,
+        "document_exact_match_rate": 0.9191090269636577
+      },
+      "after": {
+        "documents": 1706,
+        "overall": {
+          "tp": 2068,
+          "fp": 69,
+          "fn": 102,
+          "precision": 0.9677117454375292,
+          "recall": 0.9529953917050691,
+          "f1": 0.960297190619921,
+          "f2": 0.9559027456780992
+        },
+        "by_type": {
+          "name": {
+            "tp": 186,
+            "fp": 10,
+            "fn": 15,
+            "precision": 0.9489795918367347,
+            "recall": 0.9253731343283582,
+            "f1": 0.9370277078085643,
+            "f2": 0.9299999999999998
+          },
+          "address": {
+            "tp": 339,
+            "fp": 9,
+            "fn": 10,
+            "precision": 0.9741379310344828,
+            "recall": 0.9713467048710601,
+            "f1": 0.9727403156384505,
+            "f2": 0.9719036697247705
+          },
+          "email": {
+            "tp": 478,
+            "fp": 19,
+            "fn": 12,
+            "precision": 0.9617706237424547,
+            "recall": 0.9755102040816327,
+            "f1": 0.9685916919959473,
+            "f2": 0.9727309727309728
+          },
+          "phone": {
+            "tp": 734,
+            "fp": 28,
+            "fn": 55,
+            "precision": 0.963254593175853,
+            "recall": 0.9302915082382763,
+            "f1": 0.9464861379754997,
+            "f2": 0.9367023991832567
+          },
+          "ticket_no": {
+            "tp": 331,
+            "fp": 3,
+            "fn": 10,
+            "precision": 0.9910179640718563,
+            "recall": 0.9706744868035191,
+            "f1": 0.9807407407407407,
+            "f2": 0.9746760895170788
+          }
+        },
+        "gold_count": 2170,
+        "fully_masked_count": 2104,
+        "full_span_mask_rate": 0.9695852534562212,
+        "pii_documents": 1258,
+        "complete_documents": 1192,
+        "complete_document_rate": 0.9475357710651828,
+        "clean_documents": 448,
+        "clean_false_documents": 1,
+        "clean_false_rate": 0.002232142857142857,
+        "exact_match_documents": 1591,
+        "document_exact_match_rate": 0.932590855803048
+      }
+    }
+  },
+  "other_four_types_identical_all_12500": true
+}
