@@ -1,0 +1,317 @@
+/* ── 앱 레이아웃 (Figma: 사이드바 228 + 본문 패딩 40/48/32) ── */
+.app {
+  display: flex;
+  min-height: 100vh;
+  height: 100vh;
+  min-width: 1280px;
+}
+
+.page {
+  flex: 1 0 0;
+  min-width: 1px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 40px 48px 32px;
+  overflow: auto;
+}
+.page--flush-bottom {
+  padding-bottom: 0;
+}
+
+/* ── 사이드바 (v3/Sidebar 82:93) ── */
+.sidebar {
+  flex: 0 0 228px;
+  width: 228px;
+  background: var(--panel);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 30px 16px 24px;
+}
+.sidebar__brand {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 12px 28px;
+  white-space: nowrap;
+}
+.sidebar__logo {
+  font: var(--t-brand);
+  color: var(--accent);
+}
+.sidebar__product {
+  font: 700 14px/1.5 var(--font);
+  color: var(--ink);
+}
+.sidebar__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 10px;
+  font: var(--t-body);
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.sidebar__item:hover {
+  background: var(--row);
+}
+.sidebar__item.is-active {
+  background: var(--soft);
+  color: var(--accent);
+  font-weight: 700;
+}
+.sidebar__count {
+  background: var(--warnbg);
+  color: var(--warn);
+  font: 700 12px/1.5 var(--font);
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+/* ── 머리말 ── */
+.page-header {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+.page-header__text {
+  flex: 1 0 0;
+  min-width: 1px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.page-header__title {
+  font: var(--t-title);
+  color: var(--ink);
+}
+.page-header__desc {
+  font: var(--t-body);
+  color: var(--muted);
+}
+.demo-badge {
+  flex-shrink: 0;
+  background: var(--soft);
+  color: var(--accent);
+  font: var(--t-table);
+  padding: 6px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+/* ── 버튼 (VOC/Button/primary 63:84 · secondary 63:86) ── */
+.btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 54px;
+  width: 220px;
+  border-radius: 12px;
+  font: 700 16px/normal var(--font);
+  text-align: center;
+  transition: filter 0.12s ease;
+}
+.btn--primary {
+  background: var(--accent);
+  color: var(--panel);
+}
+.btn--secondary {
+  background: var(--soft);
+  color: var(--accent);
+}
+.btn:hover:not(:disabled) {
+  filter: brightness(0.96);
+}
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.btn--fill {
+  flex: 1 0 0;
+  width: auto;
+  min-width: 1px;
+}
+
+/* ── 칩 (v3/Chip 82:84~82:91) ── */
+.chip {
+  display: inline-flex;
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font: 700 12px/1.5 var(--font);
+  white-space: nowrap;
+}
+.chip--warn {
+  background: var(--warnbg);
+  color: var(--warn);
+}
+.chip--ok {
+  background: var(--soft);
+  color: var(--ok);
+}
+.chip--info {
+  background: var(--soft);
+  color: var(--accent);
+}
+.chip--bad {
+  background: var(--badbg);
+  color: var(--bad);
+}
+
+/* ── 카드 ── */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+/* ── 선택 상자: 디자인 상자 위에 투명한 네이티브 select ── */
+.select {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.select--fill {
+  flex: 1 0 0;
+  min-width: 1px;
+}
+.select__native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  font: var(--t-aux);
+}
+.select__face {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.select__face.is-flagged {
+  background: var(--warnbg);
+  border-color: var(--warn);
+}
+.select__value {
+  font: var(--t-aux);
+  color: var(--ink);
+}
+.select__caret {
+  font: var(--t-table);
+  color: var(--muted);
+}
+
+/* ── 진행 막대 ── */
+.bar {
+  position: relative;
+  width: 100%;
+  background: var(--soft);
+  overflow: hidden;
+}
+.bar__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  transition: width 0.4s ease;
+}
+
+/* ── 어둡게 + 서랍 + 모달 ── */
+.dim {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  animation: fade-in 0.15s ease;
+}
+.dim--drawer {
+  background: var(--dim-drawer);
+}
+.dim--modal {
+  background: var(--dim-modal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes slide-in {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+}
+@keyframes pop-in {
+  from {
+    transform: translateY(8px);
+    opacity: 0;
+  }
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 32px;
+  transform: translateX(-50%);
+  z-index: 30;
+  background: var(--ink);
+  color: var(--panel);
+  font: 700 14px/1.5 var(--font);
+  padding: 12px 20px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-modal);
+  animation: pop-in 0.2s ease;
+}
+
+/* 작은 버튼 (부서별 전달·엑셀 창) */
+.btn.btn--sm {
+  height: 40px;
+  width: auto;
+  padding: 0 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+/* 입력칸 */
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel);
+  color: var(--ink);
+  font: var(--t-body);
+}
+.input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  border-color: var(--accent);
+}
+.textarea {
+  resize: vertical;
+  min-height: 140px;
+  line-height: 1.7;
+}
+.input--name {
+  width: 160px;
+}
+
+.sidebar__count--info {
+  background: var(--soft);
+  color: var(--accent);
+}

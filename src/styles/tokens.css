@@ -1,0 +1,30 @@
+/* Figma 변수 (코레일 VOC · v3) — 이름을 Figma와 똑같이 맞췄어요 */
+:root {
+  --bg: #f5f7fb;
+  --panel: #ffffff;
+  --row: #fafcff;
+  --line: #dae4f0;
+  --ink: #152d49;
+  --muted: #62758b;
+  --accent: #1767b9;
+  --soft: #eaf3ff;
+  --ok: #137b5c;
+  --warn: #9a631a;
+  --warnbg: #fff5e5;
+  --bad: #c34443;
+  --badbg: #fdedeb;
+
+  --dim-drawer: rgba(20, 46, 74, 0.28);
+  --dim-modal: rgba(20, 46, 74, 0.32);
+  --shadow-modal: 0 12px 40px 0 rgba(20, 46, 74, 0.18);
+
+  --font: 'Noto Sans KR', 'Noto Sans CJK KR', system-ui, -apple-system, 'Apple SD Gothic Neo', sans-serif;
+
+  /* Figma 텍스트 스타일 (모두 line-height 1.5) */
+  --t-title: 700 30px/1.5 var(--font);     /* VOC/제목 */
+  --t-sub: 700 20px/1.5 var(--font);       /* VOC/소제목 */
+  --t-brand: 700 22px/1.5 var(--font);     /* VOC/브랜드 */
+  --t-body: 400 15px/1.5 var(--font);      /* VOC/본문 */
+  --t-aux: 400 14px/1.5 var(--font);       /* VOC/보조 */
+  --t-table: 400 12px/1.5 var(--font);     /* VOC/표 */
+}

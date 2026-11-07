@@ -1,0 +1,6 @@
+<!-- 임시 아이콘: Figma icon/upload(87:225)과 같은 모양으로 그렸어요. Figma에서 SVG로 내보내 이 파일을 바꿔주세요. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40" fill="none">
+  <path d="M20 26V8" stroke="#1767B9" stroke-width="2.6" stroke-linecap="round"/>
+  <path d="M13 15L20 8L27 15" stroke="#1767B9" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M8 24V30C8 31.1 8.9 32 10 32H30C31.1 32 32 31.1 32 30V24" stroke="#1767B9" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
